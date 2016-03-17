@@ -574,7 +574,7 @@ public struct Markdown {
                 ")*"].joinWithSeparator("\n"),
                 _nestDepth)
 
-        let content2 = content.stringByReplacingOccurrencesOfString("\\2", withString: "\\3")
+        let content2 = NSString(string: content).stringByReplacingOccurrencesOfString("\\2", withString: "\\3")
 
         // First, look for nested blocks, e.g.:
         // 	<div>
@@ -587,7 +587,7 @@ public struct Markdown {
         // the inner nested divs must be indented.
         // We need to do this before the next, more liberal match, because the next
         // match will start at the first `<div>` and stop at the first `</div>`.
-        var pattern = [
+        var pattern = NSString(string: [
             "(?>",
             "      (?>",
             "        (?<=\\n)     # Starting at the beginning of a line",
@@ -648,21 +648,21 @@ public struct Markdown {
             "          ",
             "      )",
             ")"
-            ].joinWithSeparator("\n")
-        pattern = pattern.stringByReplacingOccurrencesOfString("$less_than_tab",
-            withString: String(_tabWidth - 1))
-        pattern = pattern.stringByReplacingOccurrencesOfString("$block_tags_b_re",
-            withString: blockTagsB)
-        pattern = pattern.stringByReplacingOccurrencesOfString("$block_tags_a_re",
-            withString: blockTagsA)
-        pattern = pattern.stringByReplacingOccurrencesOfString("$attr",
-            withString: attr)
-        pattern = pattern.stringByReplacingOccurrencesOfString("$content2",
-            withString: content2)
-        pattern = pattern.stringByReplacingOccurrencesOfString("$content",
-            withString: content)
+            ].joinWithSeparator("\n"))
+        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$less_than_tab",
+            withString: String(_tabWidth - 1)))
+        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$block_tags_b_re",
+            withString: blockTagsB))
+        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$block_tags_a_re",
+            withString: blockTagsA))
+        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$attr",
+            withString: attr))
+        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$content2",
+            withString: content2))
+        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$content",
+            withString: content))
 
-        return pattern
+        return pattern.bridge()
     }
 
     /// replaces any block-level HTML blocks with hash entries
@@ -703,7 +703,7 @@ public struct Markdown {
         var tagStart = 0
         var tokens = Array<Token>()
 
-        let str = text as NSString
+        let str = NSString(string: text)
 
         // this regex is derived from the _tokenize() subroutine in Brad Choate's MTRegex plugin.
         // http://www.bradchoate.com/past/mtregex.php
@@ -790,7 +790,7 @@ public struct Markdown {
     }
 
     private func saveFromAutoLinking(s: String) -> String {
-        return s.stringByReplacingOccurrencesOfString("://", withString: Markdown.autoLinkPreventionMarker)
+        return NSString(string: s).stringByReplacingOccurrencesOfString("://", withString: Markdown.autoLinkPreventionMarker)
     }
 
     private func anchorRefEvaluator(match: Match) -> String {
@@ -861,17 +861,17 @@ public struct Markdown {
 
         var result: String
 
-        url = encodeProblemUrlChars(url.bridge())
-        url = escapeBoldItalic(url.bridge())
+        url = NSString(string: encodeProblemUrlChars(url.bridge()))
+        url = NSString(string: escapeBoldItalic(url.bridge()))
         if url.hasPrefix("<") && url.hasSuffix(">") {
-            url = url.substringWithRange(NSMakeRange(1, url.length - 2)) // remove <>'s surrounding URL, if present
+            url = NSString(string: url.substringWithRange(NSMakeRange(1, url.length - 2))) // remove <>'s surrounding URL, if present
         }
 
         result = "<a href=\"\(url)\""
 
         if title.length != 0 {
-            title = Markdown.attributeEncode(title.bridge())
-            title = escapeBoldItalic(title.bridge())
+            title = NSString(string: Markdown.attributeEncode(title.bridge()))
+            title = NSString(string: escapeBoldItalic(title.bridge()))
             result += " title=\"\(title)\""
         }
 
@@ -971,7 +971,7 @@ public struct Markdown {
         let title = match.valueOfGroupAtIndex(6)
 
         if url.hasPrefix("<") && url.hasSuffix(">") {
-            url = url.substringWithRange(NSMakeRange(1, url.length - 2))    // Remove <>'s surrounding URL, if present
+            url = NSString(string: url.substringWithRange(NSMakeRange(1, url.length - 2)))    // Remove <>'s surrounding URL, if present
         }
         return imageTag(url.bridge(), altText: alt.bridge(), title: title.bridge())
     }
@@ -1171,7 +1171,7 @@ public struct Markdown {
 
         // has to be a closure, so subsequent invocations can share the bool
         let listItemEvaluator: MatchEvaluator = { match in
-            var item = match.valueOfGroupAtIndex(3)
+            var item = match.valueOfGroupAtIndex(3).bridge()
 
             let endsWithDoubleNewline = item.hasSuffix("\n\n")
             let containsDoubleNewline = endsWithDoubleNewline || Markdown.doesString(item, containSubstring: "\n\n")
@@ -1584,7 +1584,7 @@ public struct Markdown {
 
     /// escapes Bold [ * ] and Italic [ _ ] characters
     private func escapeBoldItalic(s: String) -> String {
-        var str = s as NSString
+        var str = NSString(string: s)
         str = str.stringByReplacingOccurrencesOfString("*",
             withString: Markdown._escapeTable["*"]!)
         str = str.stringByReplacingOccurrencesOfString("_",
@@ -1601,7 +1601,7 @@ public struct Markdown {
         var sb = ""
         var encode = false
 
-        let str = url as NSString
+        let str = NSString(string: url)
         for i in 0..<str.length {
             let c = str.characterAtIndex(i)
             encode = Markdown._problemUrlChars.characterIsMember(c)
@@ -1811,7 +1811,7 @@ private struct MarkdownRegex {
     }
 
     private func replace(input: String, _ replacement: String) -> String {
-        let s = input as NSString
+        let s = NSString(string: input)
         let result = regularExpresson.stringByReplacingMatchesInString(s.bridge(),
             options: NSMatchingOptions(rawValue: 0),
             range: NSMakeRange(0, s.length),
@@ -1827,7 +1827,7 @@ private struct MarkdownRegex {
     private func replace(input: String, evaluator: (MarkdownRegexMatch) -> String) -> String {
         // Get list of all replacements to be made
         var replacements = Array<(NSRange, String)>()
-        let s = input as NSString
+        let s = NSString(string: input)
         let options = NSMatchingOptions(rawValue: 0)
         let range = NSMakeRange(0, s.length)
         regularExpresson.enumerateMatchesInString(s.bridge(),
@@ -1870,7 +1870,7 @@ private struct MarkdownRegex {
     private func matches(input: String) -> [MarkdownRegexMatch] {
         var matchArray = Array<MarkdownRegexMatch>()
 
-        let s = input as NSString
+        let s = NSString(string: input)
         let options = NSMatchingOptions(rawValue: 0)
         let range = NSMakeRange(0, s.length)
         regularExpresson.enumerateMatchesInString(s.bridge(),
@@ -1890,7 +1890,7 @@ private struct MarkdownRegex {
     }
 
     private func isMatch(input: String) -> Bool {
-        let s = input as NSString
+        let s = NSString(string: input)
         let firstMatchRange = regularExpresson.rangeOfFirstMatchInString(s.bridge(),
             options: NSMatchingOptions(rawValue: 0),
             range: NSMakeRange(0, s.length))
@@ -1907,7 +1907,7 @@ private struct MarkdownRegex {
 
         var nextStartIndex = 0
 
-        let s = input as NSString
+        let s = NSString(string: input)
         let options = NSMatchingOptions(rawValue: 0)
         let range = NSMakeRange(0, s.length)
         regularExpresson.enumerateMatchesInString(input,
