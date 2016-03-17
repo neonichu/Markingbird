@@ -24,6 +24,33 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
+#if os(Linux)
+    import Glibc
+    import SwiftShims
+#else
+    import Darwin
+
+extension NSString {
+func bridge() -> String {
+  return self as String
+}
+}
+
+extension String {
+func bridge() -> String {
+  return self
+}
+}
+#endif
+
+func cs_arc4random_uniform(upperBound: UInt32) -> UInt32 {  
+    #if os(Linux)
+        return _swift_stdlib_arc4random_uniform(upperBound)
+    #else
+        return arc4random_uniform(upperBound)
+    #endif
+}
+
 /*
 
 Markdown.swift is based on MarkdownSharp, whose licenses and history are
@@ -112,15 +139,8 @@ negligence or otherwise) arising in any way out of the use of this
 software, even if advised of the possibility of such damage.
 */
 
-import Foundation
 
-#if os(OSX)
-extension NSString {
-    func bridge() -> String {
-        return self as String
-    }
-}
-#endif
+import Foundation
 
 
 public struct MarkdownOptions {
@@ -358,7 +378,7 @@ public struct Markdown {
         // delimiters in inline links like [this](<url>).
         text = doAutoLinks(text)
 
-        text = text.stringByReplacingOccurrencesOfString(Markdown.autoLinkPreventionMarker,
+        text = NSString(string: text).stringByReplacingOccurrencesOfString(Markdown.autoLinkPreventionMarker,
             withString: "://")
 
         text = encodeAmpsAndAngles(text)
@@ -587,7 +607,7 @@ public struct Markdown {
         // the inner nested divs must be indented.
         // We need to do this before the next, more liberal match, because the next
         // match will start at the first `<div>` and stop at the first `</div>`.
-        var pattern = NSString(string: [
+        var pattern = [
             "(?>",
             "      (?>",
             "        (?<=\\n)     # Starting at the beginning of a line",
@@ -648,21 +668,21 @@ public struct Markdown {
             "          ",
             "      )",
             ")"
-            ].joinWithSeparator("\n"))
-        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$less_than_tab",
-            withString: String(_tabWidth - 1)))
-        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$block_tags_b_re",
-            withString: blockTagsB))
-        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$block_tags_a_re",
-            withString: blockTagsA))
-        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$attr",
-            withString: attr))
-        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$content2",
-            withString: content2))
-        pattern = NSString(string: pattern.stringByReplacingOccurrencesOfString("$content",
-            withString: content))
+            ].joinWithSeparator("\n")
+        pattern = NSString(string: pattern).stringByReplacingOccurrencesOfString("$less_than_tab",
+            withString: String(_tabWidth - 1))
+        pattern = NSString(string: pattern).stringByReplacingOccurrencesOfString("$block_tags_b_re",
+            withString: blockTagsB)
+        pattern = NSString(string: pattern).stringByReplacingOccurrencesOfString("$block_tags_a_re",
+            withString: blockTagsA)
+        pattern = NSString(string: pattern).stringByReplacingOccurrencesOfString("$attr",
+            withString: attr)
+        pattern = NSString(string: pattern).stringByReplacingOccurrencesOfString("$content2",
+            withString: content2)
+        pattern = NSString(string: pattern).stringByReplacingOccurrencesOfString("$content",
+            withString: content)
 
-        return pattern.bridge()
+        return pattern
     }
 
     /// replaces any block-level HTML blocks with hash entries
@@ -1174,19 +1194,19 @@ public struct Markdown {
             var item = match.valueOfGroupAtIndex(3).bridge()
 
             let endsWithDoubleNewline = item.hasSuffix("\n\n")
-            let containsDoubleNewline = endsWithDoubleNewline || Markdown.doesString(item, containSubstring: "\n\n")
+            let containsDoubleNewline = endsWithDoubleNewline || Markdown.doesString(NSString(string: item), containSubstring: "\n\n")
 
             if containsDoubleNewline || lastItemHadADoubleNewline {
                 // we could correct any bad indentation here..
-                item = self.runBlockGamut(self.outdent(item.bridge()) + "\n", unhash: false)
+                item = self.runBlockGamut(self.outdent(item) + "\n", unhash: false)
             }
             else {
                 // recursion for sub-lists
-                item = self.doLists(self.outdent(item.bridge()), isInsideParagraphlessListItem: true)
-                item = Markdown.trimEnd(item, "\n")
+                item = self.doLists(self.outdent(item), isInsideParagraphlessListItem: true)
+                item = Markdown.trimEnd(NSString(string: item), "\n")
                 if (!isInsideParagraphlessListItem) {
                     // only the outer-most item should run this, otherwise it's run multiple times for the inner ones
-                    item = self.runSpanGamut(item.bridge())
+                    item = self.runSpanGamut(item)
                 }
             }
             lastItemHadADoubleNewline = endsWithDoubleNewline
@@ -1223,8 +1243,8 @@ public struct Markdown {
     private func codeBlockEvaluator(match: Match) -> String {
         var codeBlock = match.valueOfGroupAtIndex(1)
 
-        codeBlock = encodeCode(outdent(codeBlock.bridge()))
-        codeBlock = Markdown._newlinesLeadingTrailing.replace(codeBlock.bridge(), "")
+        codeBlock = NSString(string: encodeCode(outdent(codeBlock.bridge())))
+        codeBlock = NSString(string: Markdown._newlinesLeadingTrailing.replace(codeBlock.bridge(), ""))
 
         return "\n\n<pre><code>\(codeBlock)\n</code></pre>\n\n"
     }
@@ -1269,10 +1289,10 @@ public struct Markdown {
 
     private func codeSpanEvaluator(match: Match) -> String {
         var span = match.valueOfGroupAtIndex(2)
-        span = Regex.replace(span.bridge(), pattern: "^\\p{Z}*", replacement: "") // leading whitespace
-        span = Regex.replace(span.bridge(), pattern: "\\p{Z}*$", replacement: "") // trailing whitespace
-        span = encodeCode(span.bridge())
-        span = saveFromAutoLinking(span.bridge()) // to prevent auto-linking. Not necessary in code *blocks*, but in code spans.
+        span = NSString(string: Regex.replace(span.bridge(), pattern: "^\\p{Z}*", replacement: "")) // leading whitespace
+        span = NSString(string: Regex.replace(span.bridge(), pattern: "\\p{Z}*$", replacement: "")) // trailing whitespace
+        span = NSString(string: encodeCode(span.bridge()))
+        span = NSString(string: saveFromAutoLinking(span.bridge())) // to prevent auto-linking. Not necessary in code *blocks*, but in code spans.
 
         return "<code>\(span)</code>"
     }
@@ -1408,16 +1428,16 @@ public struct Markdown {
         }
         var tail: NSString = ""
         if level < 0 {
-            link = Regex.replace(link.bridge(), pattern: "\\){1,\(-level)}$", evaluator: { m in
+            link = NSString(string: Regex.replace(link.bridge(), pattern: "\\){1,\(-level)}$", evaluator: { m in
                 tail = m.value
                 return ""
-            })
+            }))
         }
         if tail.length > 0 {
             let lastChar = link.substringFromIndex(link.length - 1)
             if !_endCharRegex.isMatch(lastChar) {
-                tail = "\(lastChar)\(tail)"
-                link = link.substringToIndex(link.length - 1)
+                tail = NSString(string: "\(lastChar)\(tail)")
+                link = NSString(string: link.substringToIndex(link.length - 1))
             }
         }
         return "<\(proto)\(link)>\(tail)"
@@ -1508,12 +1528,12 @@ public struct Markdown {
         let colon: UInt8 = 58 // ':'
         let at: UInt8 = 64    // '@'
         for c in addr.utf8 {
-            let r = arc4random_uniform(99) + 1
+            let r = cs_arc4random_uniform(99) + 1
             // TODO: verify that the following stuff works as expected in Swift
             if (r > 90 || c == colon) && c != at {
                 sb += String(count: 1, repeatedValue: UnicodeScalar(UInt32(c))) // m
             } else if r < 45 {
-                sb += NSString(format:"&#x%02x;", UInt(c)).bridge()                      // &#x6D
+                //sb += NSString(format:"&#x%02x;", UInt(c)).bridge()                      // &#x6D
             } else {
                 sb += "&#\(c);"                                                 // &#109
             }
@@ -1585,10 +1605,10 @@ public struct Markdown {
     /// escapes Bold [ * ] and Italic [ _ ] characters
     private func escapeBoldItalic(s: String) -> String {
         var str = NSString(string: s)
-        str = str.stringByReplacingOccurrencesOfString("*",
-            withString: Markdown._escapeTable["*"]!)
-        str = str.stringByReplacingOccurrencesOfString("_",
-            withString: Markdown._escapeTable["_"]!)
+        str = NSString(string: str.stringByReplacingOccurrencesOfString("*",
+            withString: Markdown._escapeTable["*"]!))
+        str = NSString(string: str.stringByReplacingOccurrencesOfString("_",
+            withString: Markdown._escapeTable["_"]!))
         return str.bridge()
     }
 
@@ -1613,7 +1633,7 @@ public struct Markdown {
 
             if (encode) {
                 sb += "%"
-                sb += NSString(format:"%2x", UInt(c)).bridge()
+                //sb += NSString(format:"%2x", UInt(c)).bridge()
             }
             else {
                 sb += String(count: 1, repeatedValue: UnicodeScalar(c))
@@ -1638,11 +1658,11 @@ public struct Markdown {
             var value = token.value
 
             if token.type == TokenType.Tag {
-                value = value.stringByReplacingOccurrencesOfString("\\",
+                value = NSString(string: value).stringByReplacingOccurrencesOfString("\\",
                     withString: Markdown._escapeTable["\\"]!)
 
                 if _autoHyperlink && value.hasPrefix("<!") { // escape slashes in comments to prevent autolinking there -- http://meta.stackoverflow.com/questions/95987/html-comment-containing-url-breaks-if-followed-by-another-html-comment
-                    value = value.stringByReplacingOccurrencesOfString("/",
+                    value = NSString(string: value).stringByReplacingOccurrencesOfString("/",
                         withString: Markdown._escapeTable["/"]!)
                 }
 
@@ -1707,8 +1727,8 @@ public struct Markdown {
     }
 
     private static func attributeEncode(s: String) -> String {
-        return s.stringByReplacingOccurrencesOfString(">", withString: "&gt;")
-            .stringByReplacingOccurrencesOfString("<", withString: "&lt;")
+        return NSString(string: NSString(string: NSString(string: s).stringByReplacingOccurrencesOfString(">", withString: "&gt;"))
+            .stringByReplacingOccurrencesOfString("<", withString: "&lt;"))
             .stringByReplacingOccurrencesOfString("\"", withString: "&quot;")
     }
 
@@ -1719,7 +1739,7 @@ public struct Markdown {
 
     private static func trimEnd(var string: NSString, _ suffix: NSString) -> String {
         while string.hasSuffix(suffix.bridge()) {
-            string = string.substringToIndex(string.length - suffix.length)
+            string = NSString(string: string.substringToIndex(string.length - suffix.length))
         }
         return string.bridge()
     }
@@ -1847,7 +1867,7 @@ private struct MarkdownRegex {
         // Make the replacements from back to front
         var result = s
         for (range, replacementText) in Array(replacements.reverse()) {
-            result = result.stringByReplacingCharactersInRange(range, withString: replacementText)
+            result = NSString(string: result.stringByReplacingCharactersInRange(range, withString: replacementText))
         }
         return result.bridge()
     }
@@ -1918,7 +1938,7 @@ private struct MarkdownRegex {
                 if range.location > nextStartIndex {
                     let runRange = NSMakeRange(nextStartIndex, range.location - nextStartIndex)
                     let run = s.substringWithRange(runRange).bridge()
-                    stringArray.append(run)
+                    stringArray.append(run.bridge())
                     nextStartIndex = range.location + range.length
                 }
         })
@@ -1926,7 +1946,7 @@ private struct MarkdownRegex {
         if nextStartIndex < s.length {
             let lastRunRange = NSMakeRange(nextStartIndex, s.length - nextStartIndex)
             let lastRun = s.substringWithRange(lastRunRange).bridge()
-            stringArray.append(lastRun)
+            stringArray.append(lastRun.bridge())
         }
 
         return stringArray
@@ -1948,7 +1968,7 @@ private struct MarkdownRegexMatch {
     }
 
     var value: NSString {
-        return string.substringWithRange(textCheckingResult.range)
+        return NSString(string: string.substringWithRange(textCheckingResult.range))
     }
 
     var index: Int {
@@ -1966,7 +1986,7 @@ private struct MarkdownRegexMatch {
                 return ""
             }
             assert(groupRange.location + groupRange.length <= string.length, "range must be contained within string")
-            return string.substringWithRange(groupRange)
+            return NSString(string: string.substringWithRange(groupRange))
         }
         return ""
     }
